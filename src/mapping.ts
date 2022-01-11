@@ -1,74 +1,66 @@
-import { BigInt } from "@graphprotocol/graph-ts"
 import {
-  ElixirSoundLibrary,
-  Approval,
-  ApprovalForAll,
   PriceUpdated,
   SoundCreated,
   SoundLicensed,
   Transfer
 } from "../generated/ElixirSoundLibrary/ElixirSoundLibrary"
-import { ExampleEntity } from "../generated/schema"
 
-export function handleApproval(event: Approval): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
+import { 
+  Sound,
+  User
+} from "../generated/schema"
 
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (!entity) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
-
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
+export function handleSoundCreated(event: SoundCreated): void {
+  let sound = Sound.load(event.params.tokenId.toString())
+  if (!sound) {
+    sound = new Sound(event.params.tokenId.toString())
+    sound.owner = event.params.tokenOwner.toHexString()
+    sound.tokenID = event.params.tokenId
+    sound.tokenURI = event.params.tokenURI
+    sound.price = event.params.price
+    sound.licenseCount = 0
   }
+  sound.save()
 
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
 
-  // Entity fields can be set based on event parameters
-  entity.owner = event.params.owner
-  entity.approved = event.params.approved
+  let user = User.load(event.params.tokenOwner.toHexString())
+  if (!user) {
+    user = new User(event.params.tokenOwner.toHexString())
+    user.save()
 
-  // Entities can be written to the store with `.save()`
-  entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.balanceOf(...)
-  // - contract.getApproved(...)
-  // - contract.isApprovedForAll(...)
-  // - contract.isLicensed(...)
-  // - contract.licenses(...)
-  // - contract.name(...)
-  // - contract.ownerOf(...)
-  // - contract.sound(...)
-  // - contract.supportsInterface(...)
-  // - contract.symbol(...)
-  // - contract.tokenCounter(...)
-  // - contract.tokenURI(...)
+  }
 }
 
-export function handleApprovalForAll(event: ApprovalForAll): void {}
+export function handleSoundLicensed(event: SoundLicensed): void {
+  let sound = Sound.load(event.params.tokenId.toString())
+  if (!sound) return
+  sound.licenseCount += 1
+  sound.save()
 
-export function handlePriceUpdated(event: PriceUpdated): void {}
 
-export function handleSoundCreated(event: SoundCreated): void {}
+  let user = User.load(event.params.licensee.toHexString())
+  if (!user) {
+    user = new User(event.params.licensee.toHexString())
+    user.save()
+  } 
+}
 
-export function handleSoundLicensed(event: SoundLicensed): void {}
+export function handlePriceUpdated(event: PriceUpdated): void {
+  let sound = Sound.load(event.params.tokenId.toString())
+  if(!sound) return
+  sound.price = event.params.price
+  sound.save()
+}
 
-export function handleTransfer(event: Transfer): void {}
+export function handleTransfer(event: Transfer): void {
+  let sound = Sound.load(event.params.tokenId.toString())
+  if (!sound) return
+  sound.owner = event.params.to.toHexString()
+  sound.save()
+
+  let user = User.load(event.params.to.toHexString())
+  if (!user) {
+    user = new User(event.params.to.toHexString())
+    user.save()
+  }
+}

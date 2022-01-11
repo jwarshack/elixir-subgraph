@@ -1,6 +1,14 @@
-type ExampleEntity @entity {
+type Sound @entity {
   id: ID!
-  count: BigInt!
-  owner: Bytes! # address
-  approved: Bytes! # address
+  tokenID: BigInt!
+  tokenURI: String
+  price: BigInt!
+  owner: User!
+  licenseCount: Int!
+
+}
+
+type User @entity {
+  id: ID!
+  sounds: [Sound!]! @derivedFrom(field: "owner")
 }
